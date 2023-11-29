@@ -66,10 +66,14 @@ def make_parser():
 
 def get_image_list(path):
     image_names = []
+    # os.walk生成每个目录的路径(maindir)、子目录列表(subdir)和文件名列表(file_name_list)
     for maindir, subdir, file_name_list in os.walk(path):
         for filename in file_name_list:
+            # 将目录路径和文件名组合成完整的文件路径
             apath = osp.join(maindir, filename)
+            # 使用osp.splitext分割文件路径，获取文件的扩展名。[1]表示选择分割结果中的第二部分
             ext = osp.splitext(apath)[1]
+            # 检查文件扩展名是否在预定义的图像文件扩展名列表IMAGE_EXT中
             if ext in IMAGE_EXT:
                 image_names.append(apath)
     return image_names
