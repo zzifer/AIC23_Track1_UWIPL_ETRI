@@ -71,4 +71,5 @@ for folder_path in train_folder_list + val_folder_list:
 
         os.makedirs(frame_folder_path, exist_ok=True)
 
+        # 使用ffmpeg将视频文件video.mp4转换成单独的帧图片，并保存在frame_folder_path下。这里指定了帧率、输出格式、起始编号和输出质量
         ffmpeg.input(video_path).filter('fps', fps='30').output(frame_folder_path + '/%05d.jpg', start_number=0, **{'qscale:v': 2}).overwrite_output().run(quiet=True)
