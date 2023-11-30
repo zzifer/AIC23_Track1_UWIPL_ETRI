@@ -79,13 +79,17 @@ if __name__ == "__main__":
                 print('processing time :',end-start)
                 start = time.time()
                 print('process {}/{}'.format(idx,len(dets)))
-            
+
+            # 检查当前帧号是否与检测数据中的帧号不同,如果帧号不同，则更新当前帧号
             if cur_frame != int(frame):
                 cur_frame = int(frame)
+                # 创建图像文件的路径,frame.zfill(5)确保帧号为5位数字（如果需要的话，前面补零）
                 img_path = os.path.join(img_dir,scene,cam,'frame',frame.zfill(5)+'.jpg')
                 img = Image.open(img_path)
-           
+
+            # 根据边界框坐标裁剪图像
             img_crop = img.crop((x1,y1,x2,y2))
+            # 将裁剪后的图像转换为RGB，应用预定义的图像转换val_transforms，并增加一个新的维度
             img_crop = val_transforms(img_crop.convert('RGB')).unsqueeze(0)
             feature = extractor(img_crop).cpu().detach().numpy()[0]
     
