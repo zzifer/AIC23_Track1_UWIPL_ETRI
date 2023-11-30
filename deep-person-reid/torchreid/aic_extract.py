@@ -59,18 +59,21 @@ if __name__ == "__main__":
     print(scenes)
     
     for scene in scenes:
-        
+
+        # 如果指定了特定场景并且当前场景与之不匹配，则跳过当前迭代
         if args.scene and scene!=args.scene:continue
             
         out_path = os.path.join(out_dir,scene+'.npy')
         det_path = os.path.join(det_dir,scene+'.txt')
         dets = np.genfromtxt(det_path,dtype=str,delimiter=',')
         cur_frame = 0
+        # 初始化一个长度等于检测结果数量的NumPy数组
         emb = np.array([None]*len(dets))
         start = time.time()
         print('processing scene {} with {} detections'.format(scene,len(dets)))
         for idx,(cam,frame,_,x1,y1,x2,y2,_) in enumerate(dets):
             x1,y1,x2,y2 = map(float,[x1,y1,x2,y2])
+            # 每处理1000个检测，打印处理时间和进度
             if idx%1000 == 0:
                 end = time.time()
                 print('processing time :',end-start)
