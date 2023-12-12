@@ -13,6 +13,7 @@ warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 
 # ==================== UTILS FUNCTIONS ====================
+# 计算两个边界框之间的交集比
 def get_iou(box1, box2):
     """
     Calculates the Intersection over Union (IoU) of two bounding boxes.
@@ -47,6 +48,7 @@ def get_iou(box1, box2):
     return iou
 
 
+# 通过在给定的窗口大小内对每个轨迹的位置进行平均，来平滑轨迹数据，从而减少位置的突变和噪声
 def smooth_avg_tracks(avg_tracks, window_size=60):
     # smooth the location of each track based on a sliding window over fid
     # the structure of smooth_avg_tracks = {tid: {fid: [xworld, yworld]}}
@@ -64,6 +66,7 @@ def smooth_avg_tracks(avg_tracks, window_size=60):
     return smoothed_avg_tracks
 
 
+# 用于重新分配跟踪数据中的标识符（ID），以解决多摄像头跟踪场景中的数据重叠和冲突问题
 def id_reassignment(tracks_list, dis_thr=200, conf_thr=0.7, try_second_nearest=True, verbose=False):
     # 1. first merge the location from each camera based on same tid and same frame into a dict
     # if two of the same tid are in the same frame, first reassign them to tid closest to the average location
