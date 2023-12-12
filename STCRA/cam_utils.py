@@ -34,18 +34,27 @@ HOMO = {
 }
 
 
+# 用于将二维图像坐标转换为三维世界坐标
+# 接收二维坐标n2d和单应矩阵h作为参数
 def image2world(n2d, h):
     # n2d = [x_2d, y_2d]
+    # 将二维坐标转换为齐次坐标（在二维坐标后添加1），并转换为numpy数组
     n2d = np.array(n2d + [1.0])
     # n2d = [x_2d, y_2d, 1]
+    # 使用单应矩阵h的逆矩阵将齐次坐标从图像空间转换到三维世界空间
     n3d = np.dot(np.linalg.inv(h), n2d.T)
     # n3d = [x_3d, y_3d, z_3d]
     # ground-plane should be normalized by z-axis
+    #  将三维坐标正规化（除以z坐标），以得到二维世界坐标
     return n3d[0] / n3d[2], n3d[1] / n3d[2]
 
-
+# 三维世界坐标转换为二维图像坐标
+# 接收三维坐标n3d和单应矩阵h作为参数
 def world2image(n3d, h):
+    # 将三维坐标转换为齐次坐标（在三维坐标后添加1），并转换为numpy数组
     n3d = np.array(n3d + [1.0])
+    #  使用单应矩阵h将三维世界坐标转换为二维图像坐标
     n2d = np.dot(h, n3d)
     # image space should also be normalized by z-axis
+    # 将得到的二维坐标正规化（除以z坐标），得到二维图像空间的坐标
     return n2d[0] / n2d[2], n2d[1] / n2d[2]
