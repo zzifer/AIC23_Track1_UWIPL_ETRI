@@ -2,6 +2,7 @@ import collections
 
 
 # ==================== FILE I/O FUNCTIONS ====================
+# 将边界框的位置转换为估计的地面上的脚部位置
 def xywh2location(x, y, w, h, w_ratio=0.5, h_ratio=0.95):
     """
     Convert the bounding box to the estimated feet location on ground-plane.
@@ -21,6 +22,7 @@ def xywh2location(x, y, w, h, w_ratio=0.5, h_ratio=0.95):
 
 
 def load_tracking(filename, debug_frame=0, enable_feet=False):
+    # 初始化用于存储跟踪数据的字典tracks，计数器cnt_duplicate和cnt_bbox
     tracks = collections.defaultdict(dict)
     cnt_duplicate = 0
     cnt_bbox = 0
@@ -31,6 +33,7 @@ def load_tracking(filename, debug_frame=0, enable_feet=False):
             line = line.strip()
             values = line.split(',')
 
+            # 检查数据格式是否正确，依据是否启用脚部位置计算
             assert len(values) == 16 if enable_feet else 10, f"Wrong format of tracking in {filename} with line: {line}"
 
             frame_id, track_id = int(values[0]), int(values[1])
@@ -39,15 +42,18 @@ def load_tracking(filename, debug_frame=0, enable_feet=False):
 
             # compute (fx, fy) if the confidence of feet detection is high enough
             # otherwise, use the pre-assumed points of each bounding box
+            # 如果启用了脚部位置计算，且检测到的脚部置信度足够高，计算脚部的坐标。否则，使用预设的边界框位置计算脚部位置
             if enable_feet and float(values[12]) > 0.5 and float(values[15]) > 0.5:
                 fx = (float(values[10]) + float(values[13])) / 2.0
                 fy = (float(values[11]) + float(values[14])) / 2.0
             else:
                 fx, fy = xywh2location(x, y, w, h)
 
+            # 如果设置了调试帧，且当前帧大于调试帧，则停止处理
             if debug_frame and frame_id > debug_frame:
                 break
 
+            # 检查是否有重复的跟踪ID和帧ID，如果有，则增加重复计数，并更新tracks字典。否则，直接在tracks字典中添加新的记录
             if frame_id in tracks[track_id].keys():
                 cnt_duplicate += 1
                 tracks[track_id][frame_id].append([x, y, w, h, fx, fy, score])
