@@ -25,6 +25,7 @@ def make_parser():
     parser.add_argument("root_path", default="/home/hsiangwei/Desktop/AICITY2023/data", type=str)
     return parser
 
+# 非极大值抑制（NMS），用于从一组重叠的边界框中选择最佳的边界框
 def nms_fast(boxes, probs=None, overlapThresh=0.3):
     # if there are no boxes, return an empty list
     if len(boxes) == 0:
@@ -32,6 +33,7 @@ def nms_fast(boxes, probs=None, overlapThresh=0.3):
 
     # if the bounding boxes are integers, convert them to floats -- this
     # is important since we'll be doing a bunch of divisions
+    # 如果boxes中的边界框坐标是整数类型，将它们转换为浮点数，因为接下来会进行除法运算
     if boxes.dtype.kind == "i":
         boxes = boxes.astype("float")
 
@@ -47,10 +49,12 @@ def nms_fast(boxes, probs=None, overlapThresh=0.3):
     # compute the area of the bounding boxes and grab the indexes to sort
     # (in the case that no probabilities are provided, simply sort on the
     # bottom-left y-coordinate)
+    # 计算每个边界框的面积，并获取用于排序的索引。如果没有提供概率（probs），则默认按照边界框的右下角y坐标排序。
     area = (x2 - x1 + 1) * (y2 - y1 + 1)
     idxs = y2
 
     # if probabilities are provided, sort on them instead
+    # 如果提供了概率，则按照概率排序
     if probs is not None:
         idxs = probs
 
@@ -61,6 +65,7 @@ def nms_fast(boxes, probs=None, overlapThresh=0.3):
     while len(idxs) > 0:
         # grab the last index in the indexes list and add the index value
         # to the list of picked indexes
+        # 从索引列表的末尾获取一个索引，将其加入pick列表
         last = len(idxs) - 1
         i = idxs[last]
         pick.append(i)
@@ -68,50 +73,64 @@ def nms_fast(boxes, probs=None, overlapThresh=0.3):
         # find the largest (x, y) coordinates for the start of the bounding
         # box and the smallest (x, y) coordinates for the end of the bounding
         # box
+        # 计算当前边界框与其它边界框的交集，包括最大的x、y起点和最小的x、y终点
         xx1 = np.maximum(x1[i], x1[idxs[:last]])
         yy1 = np.maximum(y1[i], y1[idxs[:last]])
         xx2 = np.minimum(x2[i], x2[idxs[:last]])
         yy2 = np.minimum(y2[i], y2[idxs[:last]])
 
         # compute the width and height of the bounding box
+        # 计算交集区域的宽度和高度
         w = np.maximum(0, xx2 - xx1 + 1)
         h = np.maximum(0, yy2 - yy1 + 1)
 
         # compute the ratio of overlap
+        # 计算重叠比例
         overlap = (w * h) / area[idxs[:last]]
 
         # delete all indexes from the index list that have overlap greater
         # than the provided overlap threshold
+        # 删除所有重叠比例高于阈值overlapThresh的边界框索引
         idxs = np.delete(idxs, np.concatenate(([last],
             np.where(overlap > overlapThresh)[0])))
     # return only the bounding boxes that were picked
+    # 返回被选中的边界框及其索引
     return boxes[pick].astype("float"), pick
 
 def get_people(scene, dataset, threshold):
     scenes = ['S003','S009','S014','S018','S021','S022']
     assert scene in scenes
     distance_thers = [13,19.5,16,13,16,16]
+    # 通过scenes.index(scene)找到当前场景在列表中的索引
     seq_idx = scenes.index(scene)
+    # 读取检测结果
     detections = np.genfromtxt(root_path+'/test_det/{}.txt'.format(scene), delimiter=',', dtype=str)
+    # 加载嵌入向量
     embeddings = np.load(root_path+'/test_emb/{}.npy'.format(scene),allow_pickle = True)
 
     '''
     nms
     '''
+    # 将嵌入向量转换为列表后又转换回numpy数组
     embeddings = embeddings.tolist()
     embeddings = np.array(embeddings)
 
     all_dets = None
     all_embs = None
 
+    #  对于在特定阈值列表中的每一帧进行循环
     for frame in threshold[seq_idx][0]:
 
+        # 获取当前帧的检测结果
         inds = detections[:,1] == str(frame-1)
+        #  根据索引获取当前帧的检测结果和嵌入向量
         frame_detections = detections[inds]
         frame_embeddings = embeddings[inds]
 
+        # 获取所有独特的摄像头编号
         cams = np.unique(detections[:,0])
 
+        # 对每个摄像头的检测结果应用非极大值抑制（NMS），并根据阈值过滤结果，然后将结果添加到all_dets和all_embs中
         for cam in cams:
             inds = frame_detections[:,0]==cam
             cam_det = frame_detections[inds][:,1:].astype("float")
@@ -129,8 +148,10 @@ def get_people(scene, dataset, threshold):
                 all_dets = np.vstack((all_dets,cam_det))
                 all_embs = np.vstack((all_embs,cam_embedding))
 
+    #  使用层次聚类算法对所有嵌入向量进行聚类
     clustering = AgglomerativeClustering(distance_threshold=distance_thers[seq_idx],n_clusters=None).fit(all_embs)
-    
+
+    # 返回聚类结果中最大的标签编号加1，这代表了场景中的人数
     return max(clustering.labels_)+1
 
 def get_anchor(scene, dataset, threshold, nms_thres):
@@ -142,10 +163,9 @@ def get_anchor(scene, dataset, threshold, nms_thres):
     
     '''
     
+    # 如果数据集是'test'，则定义了一个包含特定场景编号的列表scenes。如果不是'test'数据集，抛出一个错误，表明该数据集不被支持。
     if dataset == 'test':
-
         scenes = ['S003','S009','S014','S018','S021','S022']
-        
     else:
         raise ValueError('{} not supported dataset!'.format(dataset))
     
@@ -155,6 +175,7 @@ def get_anchor(scene, dataset, threshold, nms_thres):
     else:
         raise ValueError('scene not in {} set!'.format(dataset))
 
+    # 根据场景编号获取对应的场景。调用get_people函数，获取场景中的人数
     scene = scenes[seq_idx]
     k = get_people(scene,dataset,threshold)
 
@@ -170,6 +191,7 @@ def get_anchor(scene, dataset, threshold, nms_thres):
     all_dets = None
     all_embs = None
 
+    # 遍历特定帧的阈值设置。对每个帧中的每个摄像头应用非极大值抑制，并更新嵌入向量
     for frame in threshold[seq_idx][0]:
 
         inds = detections[:,1] == str(frame-1)
@@ -197,12 +219,15 @@ def get_anchor(scene, dataset, threshold, nms_thres):
 
             #cam_record += [cam]*len(cam_det)
 
+    # 使用层次聚类对所有嵌入向量进行聚类
     clustering = AgglomerativeClustering(n_clusters=k).fit(all_embs)
 
     # print(clustering.labels_)
 
+    # 创建一个默认字典anchors，用于存储每个锚点的嵌入向量
     anchors = collections.defaultdict(list)
 
+    # 遍历每个锚点ID，将对应的嵌入向量添加到anchors字典中
     for global_id in range(k):
         for n in range(len(all_embs)):
             if global_id == clustering.labels_[n]:
@@ -210,6 +235,7 @@ def get_anchor(scene, dataset, threshold, nms_thres):
     
     return anchors
 
+# 计算特征向量与多个锚点之间的距离
 def get_box_dist(feat,anchors):
     '''
     input : feature, anchors                                                anc1  anc2  anc3 ...
@@ -217,13 +243,18 @@ def get_box_dist(feat,anchors):
     '''
     box_dist = []
 
+    # 遍历anchors字典中的每一个锚点
     for idx in anchors:
         dists = []
+        # 遍历该锚点下的所有嵌入向量
         for anchor in anchors[idx]:
+            #  将每个锚点向量标准化（除以其范数）
             anchor /= np.linalg.norm(anchor)
+            # 计算特征向量feat与标准化后的锚点向量之间的余弦距离，并添加到dists列表中
             dists += [distance.cosine(feat,anchor)]
         
         #dist = min(dists) # or average..?
+        # 计算到当前锚点的所有距离的平均值
         dist = sum(dists)/len(dists)
         
         box_dist.append(dist)    
